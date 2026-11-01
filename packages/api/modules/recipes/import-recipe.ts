@@ -27,6 +27,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { after } from "next/server";
 import { z } from "zod";
+import { pickServedTranslation } from "./served-translation";
 import {
 	fetchRecipeSource,
 	ImportError,
@@ -130,29 +131,13 @@ export async function viewerOwnsRecipe(
 	return Boolean(imported);
 }
 
-function servedTranslation(
-	recipe: {
-		isCurated: boolean;
-		translations: { locale: string; content: ExtractedRecipe }[];
-	},
+function missRecipe(
+	reason: "not found" | "private" | "no translation",
+	recipeId: string,
 	locale: string,
 ) {
-	const decision = resolveRecipeCharge({
-		existing: {
-			isCurated: recipe.isCurated,
-			locales: recipe.translations.map(
-				(translation) => translation.locale,
-			),
-		},
-		requestedLocale: locale,
-	});
-	if (decision.action !== "serve") {
-		return null;
-	}
-	return (
-		recipe.translations.find((item) => item.locale === decision.locale) ??
-		null
-	);
+	console.warn(`loadRecipe returned null: ${reason}`, { recipeId, locale });
+	return null;
 }
 
 export async function loadRecipe(input: {
@@ -161,24 +146,27 @@ export async function loadRecipe(input: {
 	viewerUserId?: string | null;
 }): Promise<StoredRecipe | null> {
 	if (!z.string().uuid().safeParse(input.recipeId).success) {
-		return null;
+		return missRecipe("not found", input.recipeId, input.locale);
 	}
 	const recipe = await db.query.recipes.findFirst({
 		where: eq(recipes.id, input.recipeId),
 		with: { translations: true },
 	});
 	if (!recipe) {
-		return null;
+		return missRecipe("not found", input.recipeId, input.locale);
 	}
 
 	const viewer = input.viewerUserId ?? null;
 	const owns = viewer ? await viewerOwnsRecipe(viewer, recipe) : false;
 	if (!recipe.isCurated && !owns) {
-		return null;
+		return missRecipe("private", input.recipeId, input.locale);
 	}
-	const translation = servedTranslation(recipe, input.locale);
+	const translation = pickServedTranslation(
+		recipe.translations,
+		input.locale,
+	);
 	if (!translation) {
-		return null;
+		return missRecipe("no translation", input.recipeId, input.locale);
 	}
 	return {
 		...storedFrom(recipe, translation),
@@ -202,7 +190,10 @@ export async function loadSharedRecipe(input: {
 	if (!recipe?.shareToken) {
 		return null;
 	}
-	const translation = servedTranslation(recipe, input.locale);
+	const translation = pickServedTranslation(
+		recipe.translations,
+		input.locale,
+	);
 	if (!translation) {
 		return null;
 	}

@@ -72,11 +72,17 @@ export default async function SharedRecipePage({
 		notFound();
 	}
 	const dishUrl = await readyDishUrl(recipe.recipeId);
+	const t = await getTranslations("recipe");
+	const notice =
+		recipe.servedLocale !== locale
+			? t(recipe.servedLocale === "de" ? "curatedDe" : "curatedEn")
+			: null;
 
 	return (
 		<RecipeOverview
 			recipeId={recipe.recipeId}
 			content={recipe.content}
+			notice={notice}
 			dishUrl={dishUrl}
 			sourceUrl={recipe.attributionUrl}
 			share={{

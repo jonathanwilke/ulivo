@@ -54,6 +54,8 @@ export function resolveRecipeCharge(input: {
 		};
 	}
 
+	// Generating a missing language still costs one credit.
+	// Opening a recipe does not use this result; it serves a stored language.
 	return {
 		action: "generate",
 		charge: RECIPE_CREDIT_COST,

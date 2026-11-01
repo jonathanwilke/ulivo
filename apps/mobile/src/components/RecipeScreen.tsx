@@ -172,7 +172,7 @@ function RecipeBody({
 		: null;
 	const description = content.description?.trim();
 	const localeNotice =
-		recipe.isCurated && recipe.servedLocale !== locale
+		recipe.servedLocale !== locale
 			? copy.recipe.curated(recipe.servedLocale)
 			: null;
 	const iconsByKey = new Map(

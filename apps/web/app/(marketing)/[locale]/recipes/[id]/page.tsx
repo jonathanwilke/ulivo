@@ -91,11 +91,11 @@ export default async function RecipePage({
 		notFound();
 	}
 
-	const recipe = await ensureRecipeDescription(loaded, locale);
+	const recipe = await ensureRecipeDescription(loaded, loaded.servedLocale);
 	const dishUrl = await readyDishUrl(recipe.recipeId);
 	const t = await getTranslations("recipe");
 	const notice =
-		recipe.isCurated && recipe.servedLocale !== locale
+		recipe.servedLocale !== locale
 			? t(recipe.servedLocale === "de" ? "curatedDe" : "curatedEn")
 			: null;
 
